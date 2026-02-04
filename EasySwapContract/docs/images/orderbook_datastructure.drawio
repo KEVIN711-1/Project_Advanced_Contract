@@ -1,0 +1,146 @@
+<mxfile host="app.diagrams.net" modified="2026-02-03T00:00:00.000Z" agent="Cursor-GPT" version="24.7.17" type="device">
+  <diagram id="orderbook-ds" name="OrderBook Data Structure">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2200" pageHeight="1400" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- Title -->
+        <mxCell id="t1" value="OrderStorage 订单簿数据结构（价格红黑树 + 同价队列单链表）" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=22;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="360" y="30" width="1480" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- Box: OrderStorage state -->
+        <mxCell id="os" value="OrderStorage (合约存储)&lt;br&gt;&lt;br&gt;核心三张结构：&lt;br&gt;1) orders : mapping(OrderKey =&gt; DBOrder)&lt;br&gt;2) priceTrees : mapping(collection =&gt; mapping(side =&gt; Tree))&lt;br&gt;3) orderQueues : mapping(collection =&gt; mapping(side =&gt; mapping(price =&gt; OrderQueue)))" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="70" y="110" width="520" height="220" as="geometry"/>
+        </mxCell>
+
+        <!-- Box: orders mapping -->
+        <mxCell id="orders" value="orders[OrderKey] =&gt; DBOrder&lt;br&gt;&lt;br&gt;DBOrder {&lt;br&gt;- order : Order&lt;br&gt;- next  : OrderKey (单链表指针)&lt;br&gt;}&lt;br&gt;&lt;br&gt;哨兵：ORDERKEY_SENTINEL = 0x0&lt;br&gt;- 空队列：head/tail = sentinel&lt;br&gt;- 链表结束：next = sentinel" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="70" y="370" width="520" height="260" as="geometry"/>
+        </mxCell>
+
+        <!-- Box: priceTrees mapping -->
+        <mxCell id="pt" value="priceTrees[collection][side] =&gt; RedBlackTreeLibrary.Tree&lt;br&gt;&lt;br&gt;Tree {&lt;br&gt;- root : Price&lt;br&gt;- nodes : mapping(Price =&gt; Node)&lt;br&gt;}&lt;br&gt;&lt;br&gt;Node { parent, left, right : Price; red : uint8 }&lt;br&gt;&lt;br&gt;Price 是 uint128（0 表示 EMPTY）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="650" y="110" width="560" height="260" as="geometry"/>
+        </mxCell>
+
+        <!-- Box: orderQueues mapping -->
+        <mxCell id="oq" value="orderQueues[collection][side][price] =&gt; OrderQueue&lt;br&gt;&lt;br&gt;OrderQueue {&lt;br&gt;- head : OrderKey&lt;br&gt;- tail : OrderKey&lt;br&gt;}&lt;br&gt;&lt;br&gt;同一个 (collection, side, price) 下：&lt;br&gt;- 订单按插入顺序排队（FIFO）&lt;br&gt;- 通过 orders[OrderKey].next 串起来" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="650" y="410" width="560" height="220" as="geometry"/>
+        </mxCell>
+
+        <!-- Legend: best price rules -->
+        <mxCell id="best" value="Best Price 规则（取最优档位）&lt;br&gt;&lt;br&gt;side == Bid（买单）：bestPrice = priceTree.last()  // 最高价&lt;br&gt;side == List（卖单）：bestPrice = priceTree.first() // 最低价&lt;br&gt;&lt;br&gt;遍历下一档：&lt;br&gt;Bid 用 prev(price) 逐档下降；List 用 next(price) 逐档上升" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="110" width="520" height="170" as="geometry"/>
+        </mxCell>
+
+        <!-- Zoomed example group -->
+        <mxCell id="exTitle" value="展开一个具体例子：collection=C，side=Bid（买单）" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="70" y="690" width="900" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- Example: price tree -->
+        <mxCell id="exTree" value="priceTrees[C][Bid]（红黑树里存的是“存在队列的 price 档位”）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="70" y="740" width="620" height="90" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="p1" value="Price = 1.20" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="120" y="860" width="120" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="p2" value="Price = 1.10" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="270" y="920" width="120" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="p3" value="Price = 1.05" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="420" y="860" width="120" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- Edges between price nodes (conceptual, not exact RB links) -->
+        <mxCell id="e_p1p3" style="endArrow=none;dashed=1;strokeColor=#82b366;" edge="1" parent="1" source="p1" target="p3">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_p1p2" style="endArrow=none;dashed=1;strokeColor=#82b366;" edge="1" parent="1" source="p1" target="p2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Example: queues per price -->
+        <mxCell id="exQueues" value="orderQueues[C][Bid][price]（每个 price 一条队列）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="740" y="740" width="560" height="90" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="q1" value="OrderQueue@1.20&lt;br&gt;head=kA&lt;br&gt;tail=kC" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="740" y="860" width="160" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="q2" value="OrderQueue@1.10&lt;br&gt;head=kD&lt;br&gt;tail=kD" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="940" y="860" width="160" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="q3" value="OrderQueue@1.05&lt;br&gt;head=sentinel&lt;br&gt;tail=sentinel" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1140" y="860" width="160" height="70" as="geometry"/>
+        </mxCell>
+
+        <!-- Price -> Queue links -->
+        <mxCell id="e_p1q1" value="同一个 price 对应一条队列" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;fontSize=11;" edge="1" parent="1" source="p1" target="q1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_p2q2" style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="1" source="p2" target="q2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_p3q3" style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="1" source="p3" target="q3">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Example: linked list of orders via orders[OrderKey].next -->
+        <mxCell id="exListTitle" value="同价队列内部：用 orders[k].next 串成单链表（FIFO）" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="70" y="1010" width="900" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="oa" value="orders[kA]&lt;br&gt;DBOrder { order, next=kB }" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="70" y="1060" width="240" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="ob" value="orders[kB]&lt;br&gt;DBOrder { order, next=kC }" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="340" y="1060" width="240" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="oc" value="orders[kC]&lt;br&gt;DBOrder { order, next=sentinel }" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="610" y="1060" width="260" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="sent" value="ORDERKEY_SENTINEL&lt;br&gt;(0x0)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999999;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="910" y="1060" width="150" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e_oab" value="next" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;fontSize=11;" edge="1" parent="1" source="oa" target="ob">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_obc" value="next" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;fontSize=11;" edge="1" parent="1" source="ob" target="oc">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_ocs" value="next" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;fontSize=11;" edge="1" parent="1" source="oc" target="sent">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Link queue head/tail to orders -->
+        <mxCell id="e_q1head" value="head" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#b85450;fontSize=11;" edge="1" parent="1" source="q1" target="oa">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_q1tail" value="tail" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#b85450;fontSize=11;" edge="1" parent="1" source="q1" target="oc">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Notes about add/remove -->
+        <mxCell id="ops" value="关键操作（对应 OrderStorage._addOrder/_removeOrder）&lt;br&gt;&lt;br&gt;_addOrder(order):&lt;br&gt;- orderKey = hash(order)；orders[orderKey] 不存在才可插入&lt;br&gt;- 若 priceTree 中不存在 price：insert(price)&lt;br&gt;- 若该 price 的 OrderQueue 未初始化/为空：用 sentinel 初始化 head/tail&lt;br&gt;- 追加到 tail：orders[oldTail].next = orderKey，orders[orderKey].next = sentinel，更新 tail&lt;br&gt;&lt;br&gt;_removeOrder(order):&lt;br&gt;- 在该 price 队列里线性扫描匹配字段（maker/saleKind/expiry/salt/tokenId/amount）&lt;br&gt;- 找到后改指针并 delete orders[key]&lt;br&gt;- 若队列删空：delete orderQueue，并从 priceTree remove(price)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="320" width="520" height="480" as="geometry"/>
+        </mxCell>
+
+        <!-- Connections from OrderStorage to the three maps -->
+        <mxCell id="e_os_orders" style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="1" source="os" target="orders">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_os_pt" style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="1" source="os" target="pt">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_os_oq" style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="1" source="os" target="oq">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
