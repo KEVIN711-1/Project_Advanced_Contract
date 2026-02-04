@@ -46,7 +46,8 @@ module.exports = {
       chainId: 1,
     },
     sepolia: {
-      url: `https://eth-sepolia.g.alchemy.com/v2/${SEPOLIA_ALCHEMY_AK}`,
+      // url: `https://eth-sepolia.g.alchemy.com/v2/${SEPOLIA_ALCHEMY_AK}`,
+      url: `https://sepolia.infura.io/v3/${SEPOLIA_ALCHEMY_AK}`,
       accounts: [`${SEPOLIA_PK_ONE}`, `${SEPOLIA_PK_TWO}`],
     },
     // optimism: {
@@ -57,6 +58,7 @@ module.exports = {
   gasReporter: {
     currency: "USD",
     enabled: process.env.REPORT_GAS ? true : false,
+    // enabled: true,
     excludeContracts: [],
     src: "./contracts",
   },

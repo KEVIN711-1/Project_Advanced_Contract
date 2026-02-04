@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract TestERC721 is ERC721Enumerable, Ownable {
     string private _tokenURI;
 
-    constructor() ERC721("Troll", "Troll") Ownable(msg.sender) {}
+    constructor() ERC721("KevinNft", "KFZZZ") Ownable(msg.sender) {}
 
     function mint(address to, uint256 tokenId) external onlyOwner {
         _mint(to, tokenId);

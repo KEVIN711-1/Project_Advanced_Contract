@@ -4,7 +4,8 @@ const esDex_name = "EasySwapOrderBook";
 const esDex_address = "0xcEE5AA84032D4a53a0F9d2c33F36701c3eAD5895"
 
 const esVault_name = "EasySwapVault";
-const esVault_address = "0xaD65f3dEac0Fa9Af4eeDC96E95574AEaba6A2834"
+// const esVault_address = "0xaD65f3dEac0Fa9Af4eeDC96E95574AEaba6A2834"
+const esVault_address = "0x12522b4d3e283551021E04f40eF537d4e39A9F1F"
 
 /**  * 2024/12/22 in sepolia testnet
  * esVault contract deployed to: 0xaD65f3dEac0Fa9Af4eeDC96E95574AEaba6A2834
@@ -30,14 +31,19 @@ async function main() {
     // console.log(await upgrades.erc1967.getImplementationAddress(esDex_address), " getNewImplementationAddress")
     
     // esVault
-    // let esVault = await ethers.getContractFactory(esVault_name);
-    // console.log(await upgrades.erc1967.getImplementationAddress(esVault_address), " getOldImplementationAddress")
-    // console.log(await upgrades.erc1967.getAdminAddress(esVault_address), " getAdminAddress")
+    //1. 部署新的逻辑合约（通过工厂获取）
+    let esVault = await ethers.getContractFactory(esVault_name);
+    console.log(await upgrades.erc1967.getImplementationAddress(esVault_address), " getOldImplementationAddress")
+    console.log(await upgrades.erc1967.getAdminAddress(esVault_address), " getAdminAddress")
     
-    // esVault = await upgrades.upgradeProxy(esVault_address, esVault);
-    // esVault = await esVault.deployed();
-    // console.log("esVault upgraded");
-    // console.log(await upgrades.erc1967.getImplementationAddress(esVault_address), " getNewImplementationAddress")
+    // 2. 调用升级函数，传入：老代理地址 + 新合约工厂
+    esVault = await upgrades.upgradeProxy(esVault_address, esVault);
+    // ↑ 这个函数内部会：
+    //    a. 部署新的逻辑合约
+    //    b. 更新代理合约指向新逻辑合约
+    esVault = await esVault.deployed();
+    console.log("esVault upgraded");
+    console.log(await upgrades.erc1967.getImplementationAddress(esVault_address), " getNewImplementationAddress")
 }
 
 

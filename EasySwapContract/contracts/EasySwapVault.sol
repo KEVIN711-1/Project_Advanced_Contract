@@ -8,6 +8,9 @@ import {LibOrder, OrderKey} from "./libraries/LibOrder.sol";
 
 import {IEasySwapVault} from "./interface/IEasySwapVault.sol";
 
+// ✅ OwnableUpgradeable：只是让合约兼容代理模式（移除构造函数等）
+// ✅ 你的合约：专注于业务逻辑
+// ✅ upgrades.deployProxy()：才是真正创建代理架构的魔法
 contract EasySwapVault is IEasySwapVault, OwnableUpgradeable {
     using LibTransferSafeUpgradeable for address;
     using LibTransferSafeUpgradeable for IERC721;

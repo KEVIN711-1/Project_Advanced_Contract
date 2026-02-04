@@ -115,10 +115,10 @@ contract EasySwapOrderBook is
         _;
     }
 
-    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable state-variable-assignment
     /**
      * @notice 合约自身地址，用于delegatecall检查
      */
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable state-variable-assignment
     address private immutable self = address(this);
 
     /**
@@ -885,7 +885,8 @@ contract EasySwapOrderBook is
 
     /**
      * @notice 检查是否为delegatecall调用
-     * @dev 用于批量匹配订单时的安全检查
+     * @dev 用于批量匹配订单时的安全检查 
+     * 这条检查就是防护“直接调用实现合约”，保证逻辑函数只能通过 Proxy 执行，避免状态和权限被绕过。
      */
     function _checkDelegateCall() private view {
         require(address(this) != self);
