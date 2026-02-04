@@ -2,8 +2,8 @@ version: '3.8'
 
 services:
   mysql:
-    image: mysql:8.0
-    container_name: mysql
+    image: mysql/mysql-server:8.0
+    container_name: mysql_easyswap
     environment:
       MYSQL_ROOT_PASSWORD: rootpasswd
       MYSQL_DATABASE: easyswap
@@ -14,17 +14,24 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
     command: --default-authentication-plugin=mysql_native_password
-    # platform: linux/arm64
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
 
   redis:
-    image: redis:6.2
-    container_name: redis
+    image: redis:7-alpine
+    container_name: redis_easyswap
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
-    # platform: linux/arm64
+    command: redis-server --appendonly yes
+    restart: unless-stopped
 
 volumes:
   mysql_data:
+    driver: local
   redis_data:
+    driver: local
