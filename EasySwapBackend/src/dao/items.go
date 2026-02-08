@@ -60,15 +60,67 @@ func (d *Dao) QueryCollectionBids(ctx context.Context, chain string, collectionA
 	return bids, count, nil
 }
 
-func (d *Dao) QueryCollectionItemOrder(ctx context.Context, chain string, filter types.CollectionItemFilterParams, collectionAddr string) ([]*CollectionItem, int64, error) {
+// http://172.31.44.53/api/v1/collections/0x567E645b22d6aB60C43C35B0922669D82e3A3661/items?filters={   "sort": 1,   "chain_id": 11155111,   "page": 1,   "page_size": 20 }
+//
+//	{
+//		"trace_id": "",
+//		"code": 200,
+//		"msg": "Successful",
+//		"data": {
+//			"result": null,
+//			"count": 0
+//		}
+//	}
+
+func (d *Dao) QueryCollectionItemOrder(
+	ctx context.Context,
+	chain string,
+	filter types.CollectionItemFilterParams,
+	collectionAddr string,
+) ([]*CollectionItem, int64, error) {
+
+	fmt.Println("====== QueryCollectionItemOrder START ======")
+	fmt.Printf(
+		"chain=%s collection=%s status=%v markets=%v tokenID=%s user=%s page=%d pageSize=%d sort=%d\n",
+		chain,
+		collectionAddr,
+		filter.Status,
+		filter.Markets,
+		filter.TokenID,
+		filter.UserAddress,
+		filter.Page,
+		filter.PageSize,
+		filter.Sort,
+	)
+
+	// 添加调试信息
+	fmt.Printf("常量值检查:\n")
+	fmt.Printf("  multi.ListingOrder = %d\n", multi.ListingOrder)
+	fmt.Printf("  multi.OfferOrder = %d\n", multi.OfferOrder)
+	fmt.Printf("  multi.OrderStatusActive = %d\n", multi.OrderStatusActive)
+	fmt.Printf("  multi.OrderBookDex = %d\n", multi.OrderBookDex)
+
 	if len(filter.Markets) == 0 {
 		filter.Markets = []int{int(multi.OrderBookDex)}
+		fmt.Printf("设置默认市场: %v\n", filter.Markets)
 	}
 
 	db := d.DB.WithContext(ctx).Table(fmt.Sprintf("%s as ci", multi.ItemTableName(chain)))
 	coTableName := multi.OrderTableName(chain)
+
+	fmt.Println("item table =", multi.ItemTableName(chain))
+	fmt.Println("order table =", coTableName)
+
+	// 检查表是否存在
+	var itemTableExists, orderTableExists int64
+	d.DB.Raw("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?", multi.ItemTableName(chain)).Scan(&itemTableExists)
+	d.DB.Raw("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?", coTableName).Scan(&orderTableExists)
+	fmt.Printf("表存在检查: item表=%d, order表=%d\n", itemTableExists, orderTableExists)
+
 	// status 1 buy now  2 has offer  3 all
 	if len(filter.Status) == 1 {
+		fmt.Println(">>> branch: len(filter.Status) == 1, value =", filter.Status[0])
+
 		db.Select("ci.id as id, ci.chain_id as chain_id, 0 as rarity_rank," +
 			"ci.collection_address as collection_address,ci.token_id as token_id, ci.name as name, ci.owner as owner, " +
 			"ci.is_opensea_banned as is_opensea_banned, " +
@@ -76,128 +128,275 @@ func (d *Dao) QueryCollectionItemOrder(ctx context.Context, chain string, filter
 
 		// buy now
 		if filter.Status[0] == BuyNow {
-			db.Joins(fmt.Sprintf("join %s co on co.collection_address=ci.collection_address and co.token_id=ci.token_id", coTableName)).
-				Where("co.collection_address = ? and co.order_type = ? and co.order_status=? and co.maker = ci.owner"+
-					" and (ci.is_opensea_banned,co.marketplace_id)!=(true,1)",
-					collectionAddr, multi.ListingOrder, multi.OrderStatusActive)
+			fmt.Println(">>> sub-branch: BuyNow")
+			fmt.Printf("查询条件: order_type=%d, order_status=%d\n", multi.ListingOrder, multi.OrderStatusActive)
+
+			db.Joins(fmt.Sprintf(
+				"join %s co on co.collection_address=ci.collection_address and co.token_id=ci.token_id",
+				coTableName,
+			)).
+				Where(
+					"co.collection_address = ? and co.order_type = ? and co.order_status=? and co.maker = ci.owner"+
+						" and (ci.is_opensea_banned,co.marketplace_id)!=(true,1)",
+					collectionAddr, multi.ListingOrder, multi.OrderStatusActive,
+				)
+
 			if len(filter.Markets) == 1 {
 				db.Where("co.marketplace_id = ?", filter.Markets[0])
+				fmt.Printf("市场过滤: marketplace_id = %d\n", filter.Markets[0])
 			} else if len(filter.Markets) != 5 {
 				db.Where("co.marketplace_id in (?)", filter.Markets)
+				fmt.Printf("市场过滤: marketplace_id in %v\n", filter.Markets)
+			} else {
+				fmt.Println("市场过滤: 无 (全部5个市场)")
 			}
+
 			if filter.TokenID != "" {
 				db.Where("co.token_id =?", filter.TokenID)
+				fmt.Printf("TokenID过滤: %s\n", filter.TokenID)
 			}
 			if filter.UserAddress != "" {
 				db.Where("ci.owner =?", filter.UserAddress)
+				fmt.Printf("用户地址过滤: %s\n", filter.UserAddress)
 			}
 
 			db.Group("co.token_id")
 		}
-		//has offer
+
+		// has offer
 		if filter.Status[0] == HasOffer {
-			db.Joins(fmt.Sprintf("join %s co on co.collection_address=ci.collection_address and co.token_id=ci.token_id", coTableName)).
-				Where("co.collection_address = ? and co.order_type = ? and co.order_status = ?",
-					collectionAddr, multi.OfferOrder, multi.OrderStatusActive)
+			fmt.Println(">>> sub-branch: HasOffer")
+			fmt.Printf("查询条件: order_type=%d, order_status=%d\n", multi.OfferOrder, multi.OrderStatusActive)
+
+			db.Joins(fmt.Sprintf(
+				"join %s co on co.collection_address=ci.collection_address and co.token_id=ci.token_id",
+				coTableName,
+			)).
+				Where(
+					"co.collection_address = ? and co.order_type = ? and co.order_status = ?",
+					collectionAddr, multi.OfferOrder, multi.OrderStatusActive,
+				)
+
 			if len(filter.Markets) == 1 {
 				db.Where("co.marketplace_id = ?", filter.Markets[0])
+				fmt.Printf("市场过滤: marketplace_id = %d\n", filter.Markets[0])
 			} else if len(filter.Markets) != 5 {
 				db.Where("co.marketplace_id in (?)", filter.Markets)
+				fmt.Printf("市场过滤: marketplace_id in %v\n", filter.Markets)
+			} else {
+				fmt.Println("市场过滤: 无 (全部5个市场)")
 			}
+
 			if filter.TokenID != "" {
 				db.Where("co.token_id =?", filter.TokenID)
+				fmt.Printf("TokenID过滤: %s\n", filter.TokenID)
 			}
 			if filter.UserAddress != "" {
 				db.Where("ci.owner =?", filter.UserAddress)
+				fmt.Printf("用户地址过滤: %s\n", filter.UserAddress)
 			}
+
 			db.Group("co.token_id")
 		}
+
 	} else if len(filter.Status) == 2 {
-		// buy and sell
+		fmt.Println(">>> branch: len(filter.Status) == 2 (Buy + Offer)")
+
 		db.Select("ci.id as id, ci.chain_id as chain_id, 0 as rarity_rank," +
 			"ci.collection_address as collection_address,ci.token_id as token_id, ci.name as name, ci.owner as owner, " +
 			"ci.is_opensea_banned as is_opensea_banned, " +
 			"min(co.price) as list_price, SUBSTRING_INDEX(GROUP_CONCAT(co.marketplace_id ORDER BY co.price,co.marketplace_id),',', 1) AS market_id")
-		// join list item
-		db.Joins(fmt.Sprintf("join %s co on co.collection_address=ci.collection_address and co.token_id=ci.token_id", coTableName)).
-			Where("co.collection_address = ? and  co.order_status=? and co.maker = ci.owner"+
-				" and (ci.is_opensea_banned,co.marketplace_id)!=(true,1)",
-				collectionAddr, multi.OrderStatusActive)
+
+		db.Joins(fmt.Sprintf(
+			"join %s co on co.collection_address=ci.collection_address and co.token_id=ci.token_id",
+			coTableName,
+		)).
+			Where(
+				"co.collection_address = ? and co.order_status=? and co.maker = ci.owner"+
+					" and (ci.is_opensea_banned,co.marketplace_id)!=(true,1)",
+				collectionAddr, multi.OrderStatusActive,
+			)
+
 		if len(filter.Markets) == 1 {
 			db.Where("co.marketplace_id = ?", filter.Markets[0])
+			fmt.Printf("市场过滤: marketplace_id = %d\n", filter.Markets[0])
 		} else if len(filter.Markets) != 5 {
 			db.Where("co.marketplace_id in (?)", filter.Markets)
+			fmt.Printf("市场过滤: marketplace_id in %v\n", filter.Markets)
+		} else {
+			fmt.Println("市场过滤: 无 (全部5个市场)")
 		}
+
 		if filter.TokenID != "" {
 			db.Where("co.token_id =?", filter.TokenID)
+			fmt.Printf("TokenID过滤: %s\n", filter.TokenID)
 		}
 		if filter.UserAddress != "" {
 			db.Where("ci.owner =?", filter.UserAddress)
+			fmt.Printf("用户地址过滤: %s\n", filter.UserAddress)
 		}
 
-		db.Group("co.token_id").Having("min(co.type)=? and max(co.type)=?", multi.ListingOrder, multi.OfferOrder)
+		db.Group("co.token_id").
+			Having("min(co.type)=? and max(co.type)=?", multi.ListingOrder, multi.OfferOrder)
+
 	} else {
-		subQuery := d.DB.WithContext(ctx).Table(fmt.Sprintf("%s as cis", multi.ItemTableName(chain))).
-			Select("cis.id as item_id,cis.collection_address as collection_address,cis.token_id as token_id, cis.owner as owner, cos.order_id as order_id, min(cos.price) as list_price, SUBSTRING_INDEX(GROUP_CONCAT(cos.marketplace_id ORDER BY cos.price,cos.marketplace_id),',', 1) AS market_id, min(cos.price) != 0 as listing").
-			Joins(fmt.Sprintf("join %s cos on cos.collection_address=cis.collection_address and cos.token_id=cis.token_id", coTableName)).
-			Where("cos.collection_address = ? and cos.order_type = ? and cos.order_status=? and cos.maker = cis.owner"+
-				" and (cis.is_opensea_banned,cos.marketplace_id)!=(true,1)",
-				collectionAddr, multi.ListingOrder, multi.OrderStatusActive)
+		fmt.Println(">>> branch: len(filter.Status) == 0 or other (ALL)")
+
+		// 修复子查询：移除cis.id或添加到GROUP BY
+		subQuery := d.DB.WithContext(ctx).
+			Table(fmt.Sprintf("%s as cis", multi.ItemTableName(chain))).
+			Select(
+				// 修复：移除cis.id，因为它不在GROUP BY中
+				"cis.collection_address as collection_address,cis.token_id as token_id, cis.owner as owner, "+
+					"cos.order_id as order_id, min(cos.price) as list_price, "+
+					"SUBSTRING_INDEX(GROUP_CONCAT(cos.marketplace_id ORDER BY cos.price,cos.marketplace_id),',', 1) AS market_id, "+
+					"min(cos.price) != 0 as listing",
+			).
+			Joins(fmt.Sprintf(
+				"join %s cos on cos.collection_address=cis.collection_address and cos.token_id=cis.token_id",
+				coTableName,
+			)).
+			Where(
+				"cos.collection_address = ? and cos.order_type = ? and cos.order_status=? and cos.maker = cis.owner"+
+					" and (cis.is_opensea_banned,cos.marketplace_id)!=(true,1)",
+				collectionAddr, multi.ListingOrder, multi.OrderStatusActive,
+			)
 
 		if len(filter.Markets) == 1 {
+			fmt.Printf("子查询市场过滤: marketplace_id = %d\n", filter.Markets[0])
 			subQuery.Where("cos.marketplace_id = ?", filter.Markets[0])
 		} else if len(filter.Markets) != 5 {
+			fmt.Printf("子查询市场过滤: marketplace_id in %v\n", filter.Markets)
 			subQuery.Where("cos.marketplace_id in (?)", filter.Markets)
+		} else {
+			fmt.Println("子查询市场过滤: 无 (全部5个市场)")
 		}
-		subQuery.Group("cos.token_id")
 
-		db.Joins("left join (?) co on co.collection_address=ci.collection_address and co.token_id=ci.token_id", subQuery).
-			Select("ci.id as id, ci.chain_id as chain_id, 0 as rarity_rank," +
-				"ci.collection_address as collection_address, ci.token_id as token_id, ci.name as name, ci.owner as owner, " +
-				" ci.is_opensea_banned as is_opensea_banned, " +
-				"co.list_price as list_price, co.market_id as market_id, co.listing as listing").
-			Where(fmt.Sprintf("ci.collection_address = '%s'", collectionAddr))
+		// 修复：添加所有非聚合列到GROUP BY
+		subQuery.Group("cis.collection_address, cis.token_id, cis.owner, cos.order_id")
+
+		fmt.Println(">>> 子查询构建完成")
+
+		db.Joins(
+			"left join (?) co on co.collection_address=ci.collection_address and co.token_id=ci.token_id",
+			subQuery,
+		).
+			Select(
+				"ci.id as id, ci.chain_id as chain_id, 0 as rarity_rank,"+
+					"ci.collection_address as collection_address, ci.token_id as token_id, ci.name as name, ci.owner as owner, "+
+					"ci.is_opensea_banned as is_opensea_banned, "+
+					"co.list_price as list_price, co.market_id as market_id, co.listing as listing",
+			).
+			Where("ci.collection_address = ?", collectionAddr)
+
 		if filter.TokenID != "" {
-			db.Where(fmt.Sprintf("ci.token_id = '%s'", filter.TokenID))
+			db.Where("ci.token_id = ?", filter.TokenID)
+			fmt.Printf("主查询TokenID过滤: %s\n", filter.TokenID)
 		}
 		if filter.UserAddress != "" {
-			db.Where(fmt.Sprintf("ci.owner = '%s'", filter.UserAddress))
+			db.Where("ci.owner = ?", filter.UserAddress)
+			fmt.Printf("主查询用户地址过滤: %s\n", filter.UserAddress)
 		}
 	}
 
+	// ---------- COUNT ----------
+	fmt.Println(">>> COUNT SQL")
 	var count int64
-	countTx := db.Session(&gorm.Session{})
+	countTx := db.Session(&gorm.Session{}).Debug()
 	if err := countTx.Count(&count).Error; err != nil {
-		return nil, 0, errors.Wrap(db.Error, "failed on count items")
+		fmt.Printf("计数查询错误: %v\n", err)
+		return nil, 0, errors.Wrap(err, "failed on count items")
+	}
+	fmt.Printf("count = %d\n", count)
+
+	// 如果没有数据，执行一些诊断查询
+	if count == 0 {
+		fmt.Println(">>> 诊断查询开始")
+
+		// 查询items表中该集合的总数
+		var totalItems int64
+		d.DB.WithContext(ctx).Table(multi.ItemTableName(chain)).
+			Where("collection_address = ?", collectionAddr).
+			Count(&totalItems)
+		fmt.Printf("items表中该集合的总物品数: %d\n", totalItems)
+
+		// 查询orders表中该集合的活跃挂单数
+		var activeListings int64
+		d.DB.WithContext(ctx).Table(coTableName).
+			Where("collection_address = ? and order_type = ? and order_status = ?",
+				collectionAddr, multi.ListingOrder, multi.OrderStatusActive).
+			Count(&activeListings)
+		fmt.Printf("orders表中该集合的活跃挂单数: %d\n", activeListings)
+
+		// 查询特定市场的挂单数
+		if len(filter.Markets) == 1 {
+			var marketListings int64
+			d.DB.WithContext(ctx).Table(coTableName).
+				Where("collection_address = ? and order_type = ? and order_status = ? and marketplace_id = ?",
+					collectionAddr, multi.ListingOrder, multi.OrderStatusActive, filter.Markets[0]).
+				Count(&marketListings)
+			fmt.Printf("市场 %d 的活跃挂单数: %d\n", filter.Markets[0], marketListings)
+		}
+		fmt.Println(">>> 诊断查询结束")
 	}
 
-	// select all collection items
+	// ---------- ORDER ----------
 	if len(filter.Status) == 0 {
 		db.Order("listing desc")
 	}
 
 	if filter.Sort == 0 {
 		filter.Sort = listPriceAsc
+		fmt.Printf("排序参数为0，设置为默认值: %d\n", listPriceAsc)
 	}
 
 	switch filter.Sort {
 	case listTime:
 		db.Order("list_time desc,ci.id asc")
+		fmt.Println("排序方式: 按上架时间降序")
 	case listPriceAsc:
 		db.Order("list_price asc, ci.id asc")
+		fmt.Println("排序方式: 按价格升序")
 	case listPriceDesc:
 		db.Order("list_price desc,ci.id asc")
+		fmt.Println("排序方式: 按价格降序")
 	case salePriceDesc:
 		db.Order("sale_price desc,ci.id asc")
+		fmt.Println("排序方式: 按销售价格降序")
 	case salePriceAsc:
 		db.Order("sale_price = 0,sale_price asc,ci.id asc")
+		fmt.Println("排序方式: 按销售价格升序")
 	}
 
+	// ---------- SCAN ----------
+	fmt.Println(">>> QUERY SQL")
+	db = db.Debug()
+
 	var items []*CollectionItem
-	db.Offset(int((filter.Page - 1) * filter.PageSize)).Limit(int(filter.PageSize)).Scan(&items)
+	offset := int((filter.Page - 1) * filter.PageSize)
+	limit := int(filter.PageSize)
+	fmt.Printf("分页参数: offset=%d, limit=%d\n", offset, limit)
+
+	db.Offset(offset).
+		Limit(limit).
+		Scan(&items)
+
 	if db.Error != nil {
+		fmt.Printf("查询items错误: %v\n", db.Error)
 		return nil, 0, errors.Wrap(db.Error, "failed on get query items info")
 	}
+
+	fmt.Printf("items len = %d\n", len(items))
+
+	// 打印前几个结果
+	for i, item := range items {
+		if i < 5 { // 只打印前5个
+			fmt.Printf("item[%d]: TokenID=%s, Owner=%s, ListPrice=%v, Listing=%v\n",
+				i, item.TokenId, item.Owner, item.ListPrice, item.Listing)
+		}
+	}
+
+	fmt.Println("====== QueryCollectionItemOrder END ======")
 
 	return items, count, nil
 }

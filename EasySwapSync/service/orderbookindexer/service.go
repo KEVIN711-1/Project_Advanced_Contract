@@ -22,7 +22,7 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
-	ethereumTypes "github.com/ethereum/go-ethereum/core/types"
+	ethereumTypes "github.com/ethereum/go-ethereum/core/types" //存在相同的包名，所以用ethereumTypes 给这个包重命名
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
 	"github.com/zeromicro/go-zero/core/threading"
@@ -35,9 +35,11 @@ import (
 )
 
 const (
-	EventIndexType      = 6
-	SleepInterval       = 10  // in seconds
-	SyncBlockPeriod     = 100 // 提高同步效率，每次处理8个区块
+	EventIndexType  = 6
+	SleepInterval   = 10  // in seconds
+	SyncBlockPeriod = 100 // 提高同步效率，每次处理8个区块
+	// 事件签名字符串，用于和log.topics[0] 区分日志是那个事件的信息，可以提前根据事件声明的字符串来计算出对应的hash值
+	// LogMakeEventSignature="LogMake(bytes32,address,address,uint256,uint256,address,uint256,uint256,uint256,uint8,uint256)" LogMakeTopic = crypto.Keccak256Hash([]byte(LogMakeEventSignature))
 	LogMakeTopic        = "0xfc37f2ff950f95913eb7182357ba3c14df60ef354bc7d6ab1ba2815f249fffe6"
 	LogCancelTopic      = "0x0ac8bb53fac566d7afc05d8b4df11d7690a7b27bdc40b54e4060f9b21fb849bd"
 	LogMatchTopic       = "0xf629aecab94607bc43ce4aebd564bf6e61c7327226a797b002de724b9944b20e"
@@ -337,7 +339,7 @@ func (s *Service) handleMakeEvent(log ethereumTypes.Log) {
 			zap.Error(err))
 	}
 
-	if err := s.orderManager.AddToOrderManagerQueue(&multi.Order{ // 将订单信息存入订单管理队列
+	if err := s.orderManager.AddToOrderManagerQueue(&multi.Order{ // 将订单信息存入订单管理队列，订单会造成价格波动？放在这里统一处理？
 		ExpireTime:        newOrder.ExpireTime,
 		OrderID:           newOrder.OrderID,
 		CollectionAddress: newOrder.CollectionAddress,

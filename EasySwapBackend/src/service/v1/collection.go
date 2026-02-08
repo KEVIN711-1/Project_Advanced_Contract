@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 	"sync"
 
@@ -35,6 +36,13 @@ func GetBids(ctx context.Context, svcCtx *svc.ServerCtx, chain string, collectio
 
 func GetItems(ctx context.Context, svcCtx *svc.ServerCtx, chain string, filter types.CollectionItemFilterParams, collectionAddr string) (*types.NFTListingInfoResp, error) {
 	items, count, err := svcCtx.Dao.QueryCollectionItemOrder(ctx, chain, filter, collectionAddr)
+	log.Printf("=== QueryCollectionItemOrder 调用结果 ===")
+	log.Printf("链名: %v", chain)
+	log.Printf("过滤器: %+v", filter)
+	log.Printf("集合地址: %s", collectionAddr)
+	log.Printf("错误: %v", err)
+	log.Printf("计数: %d", count)
+	log.Printf("items数量: %d", len(items))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed on get item info")
 	}
@@ -261,6 +269,48 @@ func GetItems(ctx context.Context, svcCtx *svc.ServerCtx, chain string, filter t
 	}, nil
 }
 
+//http://172.31.44.53/api/v1/collections/0x567E645b22d6aB60C43C35B0922669D82e3A3661/2?chain_id=11155111
+
+//	{
+//		"trace_id": "",
+//		"code": 200,
+//		"msg": "Successful",
+//		"data": {
+//			"result": {
+//				"chain_id": 11155111,
+//				"name": "Unknown Collection #2",
+//				"collection_address": "0x567E645b22d6aB60C43C35B0922669D82e3A3661",
+//				"collection_name": "Unknown Collection",
+//				"collection_image_uri": "",
+//				"token_id": "2",
+//				"image_uri": "",
+//				"video_type": "",
+//				"video_uri": "",
+//				"rarity_rank": 0,
+//				"rarity_value": 0,
+//				"last_sell_price": "0",
+//				"floor_price": "2000000000000000",
+//				"owner_address": "0x0eD4b67d787bB1a47E06F0C6927C223FFd2cB6BC",
+//				"is_opensea_banned": false,
+//				"marketplace_id": 0,
+//				"list_order_id": "",
+//				"list_time": 0,
+//				"list_price": "0",
+//				"list_expire_time": 0,
+//				"list_salt": 0,
+//				"list_maker": "",
+//				"bid_order_id": "",
+//				"bid_time": 0,
+//				"bid_expire_time": 0,
+//				"bid_price": "0",
+//				"bid_salt": 0,
+//				"bid_maker": "",
+//				"bid_type": 0,
+//				"bid_size": 0,
+//				"bid_unfilled": 0
+//			}
+//		}
+//	}
 func GetItem(ctx context.Context, svcCtx *svc.ServerCtx, chain string, chainID int, collectionAddr, tokenID string) (*types.ItemDetailInfoResp, error) {
 	var queryErr error
 	var wg sync.WaitGroup
@@ -725,24 +775,24 @@ func GetItemImage(ctx context.Context, svcCtx *svc.ServerCtx, chain string, coll
 func MintNFT(ctx context.Context, svcCtx *svc.ServerCtx, chain, collectionAddr, userAddr string, req *types.MintRequest) (*types.MintResult, error) {
 	// 这里需要实现智能合约交互逻辑
 	// 注意：实际的私钥应该从环境变量或安全的密钥管理系统中获取
-	
+
 	// 验证用户权限
 	if !isAuthorizedMinter(userAddr) {
 		return nil, errors.New("unauthorized minter")
 	}
-	
+
 	// 验证请求参数
 	if err := validateMintRequest(req); err != nil {
 		return nil, err
 	}
-	
+
 	// 这里应该调用区块链服务进行实际的铸造
 	// 示例代码 - 实际实现需要根据您的区块链服务来调整
 	result, err := performMint(ctx, svcCtx, chain, collectionAddr, req)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to mint NFT")
 	}
-	
+
 	return result, nil
 }
 
@@ -750,13 +800,13 @@ func MintNFT(ctx context.Context, svcCtx *svc.ServerCtx, chain, collectionAddr, 
 func isAuthorizedMinter(userAddr string) bool {
 	// 这里应该实现实际的权限检查逻辑
 	// 例如检查用户是否在白名单中，或者是否是合约所有者
-	
+
 	// 临时实现 - 实际应用中需要更严格的权限控制
 	authorizedMinters := map[string]bool{
 		// 添加授权的铸造者地址
 		"0x742d35Cc6634C0532925a3b8D0Ac9C4C0C0C0C0C": true, // 示例地址
 	}
-	
+
 	return authorizedMinters[userAddr]
 }
 
@@ -765,16 +815,16 @@ func validateMintRequest(req *types.MintRequest) error {
 	if req.ToAddress == "" {
 		return errors.New("to_address is required")
 	}
-	
+
 	if req.TokenURI == "" {
 		return errors.New("token_uri is required")
 	}
-	
+
 	// 验证地址格式
 	if !isValidEthereumAddress(req.ToAddress) {
 		return errors.New("invalid to_address format")
 	}
-	
+
 	return nil
 }
 
@@ -784,11 +834,11 @@ func isValidEthereumAddress(address string) bool {
 	if len(address) != 42 {
 		return false
 	}
-	
+
 	if address[:2] != "0x" {
 		return false
 	}
-	
+
 	// 这里可以添加更严格的地址验证逻辑
 	return true
 }
@@ -798,12 +848,12 @@ func performMint(ctx context.Context, svcCtx *svc.ServerCtx, chain, collectionAd
 	// 重要提示：这里需要实现实际的区块链交互
 	// 私钥应该从环境变量中安全获取，例如：
 	// privateKey := os.Getenv("MINTER_PRIVATE_KEY")
-	
+
 	// 示例返回 - 实际实现需要调用区块链服务
 	return &types.MintResult{
 		TxHash:  "0x" + generateMockTxHash(), // 实际应该是真实的交易哈希
-		TokenID: generateNextTokenID(),        // 实际应该是合约返回的token ID
-		Status:  "pending",                    // 交易状态
+		TokenID: generateNextTokenID(),       // 实际应该是合约返回的token ID
+		Status:  "pending",                   // 交易状态
 	}, nil
 }
 

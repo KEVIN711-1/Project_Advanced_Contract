@@ -53,9 +53,9 @@ async function main() {
     // 创建卖单，挂单出售自己的NFT
     // await testMakeOrder();
     
-    // for (let i = 1; i < 20; i++) {
-    //     await testMakeOrder(i);
-    // }
+    for (let i = 10; i < 12; i++) {
+        await testMakeOrder(i);
+    }
     
     // 3. cancel order
     // orderkey1 = hash(order1) 每个orderkey都是唯一的，根据唯一的order key取消订单

@@ -16,7 +16,7 @@ async function main() {
   // mint
   let testERC721Address = "0x567E645b22d6aB60C43C35B0922669D82e3A3661";
   let testERC721 = await (await ethers.getContractFactory("Troll")).attach(testERC721Address)
-  tx = await testERC721.mint(deployer.address, 10);
+  tx = await testERC721.mint(deployer.address, 15);
   await tx.wait()
   console.log("mint tx:", tx.hash)
 }
