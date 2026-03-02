@@ -43,20 +43,31 @@ async function main() {
 // 从公钥只能推导出地址，无法反推私钥
 // 从地址什么也推导不出来
 // 根据我的私钥获取我账户的地址
+
+  // 第1步：获取部署者账户
   const [deployer] = await ethers.getSigners()
   console.log("deployer: ", deployer.address)
+
+  // 第2步：部署EasySwapVault代理合约
+  // 逻辑合约：就是你写的EasySwapVault
+  // 代理合约：OpenZeppelin自动生成的ERC1967Proxy
+  // 初始化：通过代理合约调用逻辑合约的initialize()
+  // 整个过程：deployProxy一步完成所有部署和初始化
+
 
   // let esVault = await ethers.getContractFactory("EasySwapVault")
   // esVault = await upgrades.deployProxy(esVault, { initializer: 'initialize' });
   // await esVault.deployed()
-  // console.log("esVault contract deployed to:", esVault.address)
-  // console.log(await upgrades.erc1967.getImplementationAddress(esVault.address), " esVault getImplementationAddress")
-  // console.log(await upgrades.erc1967.getAdminAddress(esVault.address), " esVault getAdminAddress")
+  // console.log("esVault contract deployed to:", esVault.address) //代理合约地址
+  // console.log(await upgrades.erc1967.getImplementationAddress(esVault.address), " esVault getImplementationAddress") // 逻辑合约地址
+  // console.log(await upgrades.erc1967.getAdminAddress(esVault.address), " esVault getAdminAddress") // 管理员地址
 
-  // newProtocolShare = 200;
-  // newESVault = "0x12522b4d3e283551021E04f40eF537d4e39A9F1F";
-  // EIP712Name = "EasySwapOrderBook";
-  // EIP712Version = "1";
+  // 第3步：部署EasySwapOrderBook代理合约
+  // newProtocolShare = 200;  // 协议手续费分成比例 2%
+  // newESVault = "0x12522b4d3e283551021E04f40eF537d4e39A9F1F";  // Vault 的代理合约地址
+  // EIP712Name = "EasySwapOrderBook";  // 用于签名验证的域名
+  // EIP712Version = "1";  // 版本号 用于订单签名的EIP-712域名分隔
+
   // let esDex = await ethers.getContractFactory("EasySwapOrderBook")
   // esDex = await upgrades.deployProxy(esDex, [newProtocolShare, newESVault, EIP712Name, EIP712Version], { initializer: 'initialize' });
   // await esDex.deployed()
@@ -64,13 +75,14 @@ async function main() {
   // console.log(await upgrades.erc1967.getImplementationAddress(esDex.address), " esDex getImplementationAddress")
   // console.log(await upgrades.erc1967.getAdminAddress(esDex.address), " esDex getAdminAddress")
 
+  // 第4步：建立合约间的双向绑定
   esDexAddress = "0xCc5CA9A99d856a3506FB041559fa4516A1fCcb9C"
   esVaultAddress = "0x12522b4d3e283551021E04f40eF537d4e39A9F1F"
   const esVault = await (
     await ethers.getContractFactory("EasySwapVault")
-  ).attach(esVaultAddress)   // ← 不是部署新合约，而是连接到已有的
+  ).attach(esVaultAddress)   // ← 不是部署新合约， 连接到已部署的Vault合约
 
-  // 2. 设置金库合约的 OrderBook 地址
+  // 2. 设置金库Vault合约的 OrderBook 地址
   tx = await esVault.setOrderBook(esDexAddress)
   await tx.wait()
   console.log("esVault setOrderBook tx:", tx.hash)
