@@ -105,4 +105,5 @@ const esVault_address = "0x12522b4d3e283551021E04f40eF537d4e39A9F1F"
 const erc721_name = "TestERC721"
 const erc721_address = "0x567E645b22d6aB60C43C35B0922669D82e3A3661"
 
-2、
+六、TestEasySwap.js 
+npx hardhat test 
