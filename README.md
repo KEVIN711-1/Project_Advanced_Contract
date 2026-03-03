@@ -1,57 +1,6 @@
 # Project_Advanced_Contract
 
 
-一、先启动EasySwapSync 模块 同步区块链数据到本地
-### Mysql & Redis
-docker 容器里先跑起mysql 和radis 服务
-#docker compose up -d
-#docker ps'
-
-### Set Config file
-Copy config/config.toml.example to config/config.toml. 
-将模板的url替换为可用的测试网url
-https_url="https://sepolia.infura.io/v3/c5daace64d64444790a8d4bdd7c027a6" #测试网的url
-
-
-
-### set database table
-``shell
-#步骤 2：进入 MySQL 容器
-docker exec -it mysql_easyswap mysql -u easyuser -p
-#步骤 3：进入数据库
-USE easyswap;
-SHOW TABLES LIKE 'ob_indexed_status';
-
-#步骤 4：初始化区块游标（必做）
-SELECT id, chain_id, index_type, last_indexed_block FROM ob_indexed_status;
-
-INSERT INTO ob_indexed_status
-(
-  chain_id,
-  index_type,
-  last_indexed_block,
-  last_indexed_time,
-  create_time,
-  update_time
-)
-VALUES
-(11155111, 6, 10189593, NOW(), NOW(), NOW()),
-(11155111, 5, 10189593, NOW(), NOW(), NOW());
-```
-
-## Run
-Run command below
-```shell
-go run main.go daemon
-
-二、开启后端程序，和前端api 交互，返回EasySwapSync同步的信息
-
-1、`cp config/config.toml.example  config/config.toml`
-
-
-2、go run src/main.go
-
-
 三、EasySwapContract 测试流程
 1、先配置.env 环境变量
 # Ethereum Mainnet
@@ -107,3 +56,58 @@ const erc721_address = "0x567E645b22d6aB60C43C35B0922669D82e3A3661"
 
 六、TestEasySwap.js 
 npx hardhat test 
+
+一、先启动EasySwapSync 模块 同步区块链数据到本地
+### Mysql & Redis
+docker 容器里先跑起mysql 和radis 服务
+#docker compose up -d
+#docker ps'
+
+### Set Config file
+Copy config/config.toml.example to config/config.toml. 
+将模板的url替换为可用的测试网url
+https_url="https://sepolia.infura.io/v3/c5daace64d64444790a8d4bdd7c027a6" #测试网的url
+
+[easyswap_market]
+apikey = ""
+name = "EasySwap"
+version= "1"
+contract= "0xCc5CA9A99d856a3506FB041559fa4516A1fCcb9C" //上面部署好的合约地址
+
+### set database table
+``shell
+#步骤 2：进入 MySQL 容器
+docker exec -it mysql_easyswap mysql -u easyuser -p
+#步骤 3：进入数据库
+USE easyswap;
+SHOW TABLES LIKE 'ob_indexed_status';
+
+#步骤 4：初始化区块游标（必做）
+SELECT id, chain_id, index_type, last_indexed_block FROM ob_indexed_status;
+
+INSERT INTO ob_indexed_status
+(
+  chain_id,
+  index_type,
+  last_indexed_block,
+  last_indexed_time,
+  create_time,
+  update_time
+)
+VALUES
+(11155111, 6, 10189593, NOW(), NOW(), NOW()),
+(11155111, 5, 10189593, NOW(), NOW(), NOW());
+```
+
+## Run
+Run command below
+```shell
+go run main.go daemon
+
+二、开启后端程序，和前端api 交互，返回EasySwapSync同步的信息
+
+1、`cp config/config.toml.example  config/config.toml`
+
+
+2、go run src/main.go
+
